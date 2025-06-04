@@ -8,55 +8,51 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
+    - name: Checkout source code
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install build dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential clang flex g++ gawk gcc-multilib \
           git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev \
           file wget python3 python3-pip time
 
-    - name: Clone OpenWrt
+    - name: Clone OpenWrt and configure feeds
       run: |
         git clone https://github.com/openwrt/openwrt.git
         cd openwrt
-        # 添加 feeds 源，含 vlmcsd
-        echo "src-git lienol https://github.com/xiaorouji/openwrt-passwall" >> feeds.conf.default
-        echo "src-git vlmcsd https://github.com/Wind4/vlmcsd" >> feeds.conf.default
+        # 添加官方和第三方 feeds
+        echo "src-git packages https://git.openwrt.org/feed/packages.git" > feeds.conf.default
+        echo "src-git luci https://git.openwrt.org/feed/luci.git" >> feeds.conf.default
+        echo "src-git routing https://git.openwrt.org/feed/routing.git" >> feeds.conf.default
+        echo "src-git telephony https://git.openwrt.org/feed/telephony.git" >> feeds.conf.default
+        echo "src-git passwall https://github.com/xiaorouji/openwrt-passwall.git" >> feeds.conf.default
+        echo "src-git vlmcsd https://github.com/Wind4/vlmcsd.git" >> feeds.conf.default
 
-    - name: Update and install feeds with vlmcsd fallback
+    - name: Update and install feeds
       run: |
         cd openwrt
-        ./scripts/feeds update -a || echo "Feeds update failed, retrying..."
-        ./scripts/feeds install -a || echo "Feeds install failed, retrying..."
-        # 检查 vlmcsd 是否存在，没有则手动clone
-        if [ ! -d feeds/vlmcsd ]; then
-          echo "vlmcsd feed missing, cloning manually..."
-          git clone https://github.com/Wind4/vlmcsd-openwrt.git feeds/vlmcsd
-        fi
+        ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: Copy custom files and config
+    - name: Copy custom .config
       run: |
-        cp -r files openwrt/files
         cp .config openwrt/.config
 
-    - name: Make defconfig
+    - name: Prepare build environment
       run: |
         cd openwrt
         make defconfig
 
-    - name: Compile
+    - name: Build OpenWrt firmware
       run: |
         cd openwrt
         make -j$(nproc) download
         make -j$(nproc) V=s
 
-    - name: Upload firmware
+    - name: Upload firmware artifacts
       uses: actions/upload-artifact@v4
       with:
         name: OpenWrt-x86_64
-        path: openwrt/bin
- 
+        path: openwrt/bin/targets/x86/64/
