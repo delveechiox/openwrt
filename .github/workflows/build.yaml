@@ -30,6 +30,7 @@ jobs:
     - name: Clone OpenWrt source # 克隆 OpenWrt 官方源码
       run: |
         git clone https://github.com/openwrt/openwrt.git openwrt
+        git clone https://github.com/cokebar/openwrt-vlmcsd.git vlmscd
         cd openwrt
         # 如果你想编译特定版本，可以在这里切换分支或标签，例如：
         # git checkout v23.05.2 # 切换到 OpenWrt 23.05.2 版本
