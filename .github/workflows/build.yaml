@@ -16,21 +16,12 @@ jobs:
        
     - name: Set up build environment # 安装编译 OpenWrt 所需的依赖
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-        sudo docker image prune --all --force
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
-        sudo -E apt-get -qq autoremove --purge
-        sudo -E apt-get -qq clean
-        sudo mkdir -p /workdir
-        sudo chown $USER:$GROUPS /workdir
-        #sudo apt update
-        #sudo apt install -y build-essential libncurses-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 python3-distutils python3-netifaces file
+        sudo apt update
+        sudo apt install -y build-essential libncurses-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 python3-distutils python3-netifaces file
 
     - name: Clone OpenWrt source # 克隆 OpenWrt 官方源码
       run: |
         git clone https://github.com/openwrt/openwrt.git openwrt
-        git clone https://github.com/cokebar/openwrt-vlmcsd.git vlmscd
         cd openwrt
         # 如果你想编译特定版本，可以在这里切换分支或标签，例如：
         # git checkout v23.05.2 # 切换到 OpenWrt 23.05.2 版本
@@ -40,12 +31,9 @@ jobs:
         cd openwrt
         echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
         echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
-        echo 'src-git vlmcsd_feed https://github.com/cokebar/openwrt-vlmcsd.git' >> feeds.conf
-
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
-        rm -rf tmp build_dir && ./scripts/feeds update -a -i && ./scripts/feeds install -a -f
-
+        ./scripts/feeds update -a -i
+        ./scripts/feeds install -a -f
+        
     - name: Load custom configuration # 加载你的自定义 .config 文件
       # ⚠️ 注意：你需要将你的 .config 文件放在你的仓库根目录下，例如名为 'my_custom_config'
       # 如果你没有自定义 .config 文件，可以删除此步骤，并手动生成或使用默认配置
