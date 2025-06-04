@@ -31,6 +31,8 @@ jobs:
         cd openwrt
         echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
         echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+        echo 'src-git vlmcsd_feed https://github.com/cokebar/openwrt-vlmcsd.git' >> feeds.conf
+
         ./scripts/feeds update -a
         ./scripts/feeds install -a
         ./scripts/feeds install python3-netifaces
