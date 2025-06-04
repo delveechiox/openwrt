@@ -22,9 +22,20 @@ jobs:
       run: |
         git clone https://github.com/openwrt/openwrt.git
         cd openwrt
+        # 添加 feeds 源，含 vlmcsd
         echo "src-git lienol https://github.com/xiaorouji/openwrt-passwall" >> feeds.conf.default
         echo "src-git vlmcsd https://github.com/Waachooo/vlmcsd-openwrt.git" >> feeds.conf.default
-        ./scripts/feeds update -a
+
+    - name: Update and install feeds with vlmcsd fallback
+      run: |
+        cd openwrt
+        ./scripts/feeds update -a || echo "Feeds update failed, retrying..."
+        ./scripts/feeds install -a || echo "Feeds install failed, retrying..."
+        # 检查 vlmcsd 是否存在，没有则手动clone
+        if [ ! -d feeds/vlmcsd ]; then
+          echo "vlmcsd feed missing, cloning manually..."
+          git clone https://github.com/Waachooo/vlmcsd-openwrt.git feeds/vlmcsd
+        fi
         ./scripts/feeds install -a
 
     - name: Copy custom files and config
@@ -48,3 +59,4 @@ jobs:
       with:
         name: OpenWrt-x86_64
         path: openwrt/bin
+ 
