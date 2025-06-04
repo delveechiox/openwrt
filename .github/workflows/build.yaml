@@ -1,0 +1,84 @@
+name: Build OpenWrt Firmware
+
+on:
+  workflow_dispatch: # 允许手动触发工作流程
+  # push:
+  #   branches:
+  #     - master # 也可以设置为当你推送到 master 分支时自动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04 # 使用最新的 Ubuntu 22.04 运行器
+
+    steps:
+    - name: Checkout # 检出你的仓库代码
+      uses: actions/checkout@v4
+       
+    - name: Set up build environment # 安装编译 OpenWrt 所需的依赖
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libncurses-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 python3-distutils file
+
+    - name: Clone OpenWrt source # 克隆 OpenWrt 官方源码
+      run: |
+        git clone https://github.com/openwrt/openwrt.git openwrt
+        cd openwrt
+        # 如果你想编译特定版本，可以在这里切换分支或标签，例如：
+        # git checkout v23.05.2 # 切换到 OpenWrt 23.05.2 版本
+
+    - name: Update feeds # 更新并安装所有 feeds
+      run: |
+        cd openwrt
+        echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
+        echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Load custom configuration # 加载你的自定义 .config 文件
+      # ⚠️ 注意：你需要将你的 .config 文件放在你的仓库根目录下，例如名为 'my_custom_config'
+      # 如果你没有自定义 .config 文件，可以删除此步骤，并手动生成或使用默认配置
+      run: |
+        cd openwrt
+        if [ -f ../.config ]; then # 假设你的 .config 文件在仓库根目录
+          cp ../.config ./.config
+          echo "Using custom .config from repository."
+        else
+          echo "No custom .config found. Generating default config..."
+          make defconfig # 生成默认配置
+        fi
+        
+    - name: Start SSH via tmate
+      uses: P3TERX/ssh2actions@main
+
+    - name: Download all sources # 下载所有编译所需的软件包源码
+      run: |
+        cd openwrt
+        make -j$(nproc) download V=s # V=s 显示详细下载过程
+
+    - name: Compile OpenWrt # 开始编译 OpenWrt 固件
+      id: compile # 为此步骤命名，以便后续引用
+      run: |
+        cd openwrt
+        sed -i 's/192.168.1.1/192.168.5.5/g' package/base-files/files/bin/config_generate
+        echo "Starting OpenWrt compilation..."
+        # 使用 -j$(nproc) 来利用所有 CPU 核心并行编译，加快速度
+        make -j$(nproc) V=s # V=s 显示详细编译过程
+
+    - name: Check for compiled firmware # 检查固件是否编译成功
+      run: |
+        cd openwrt/bin/targets/
+        if [ -d ./* ]; then
+          echo "Firmware compilation successful. Listing generated files:"
+          ls -lh ./*
+        else
+          echo "Firmware compilation failed or no files found."
+          exit 1
+        fi
+
+    - name: Archive production artifacts # 打包并上传编译好的固件
+      uses: actions/upload-artifact@v4
+      with:
+        name: OpenWrt-Firmware-${{ github.event.repository.name }}-${{ github.ref_name }} # 产物名称
+        path: openwrt/bin/targets/ # 固件所在的目录
+        retention-days: 7 # 产物保留 7 天
