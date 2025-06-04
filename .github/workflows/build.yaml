@@ -31,9 +31,9 @@ jobs:
         cd openwrt
         echo 'src-git helloworld https://github.com/fw876/helloworld' >>feeds.conf.default
         echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
-
         ./scripts/feeds update -a
         ./scripts/feeds install -a
+        ./scripts/feeds install python3-netifaces
 
     - name: Load custom configuration # 加载你的自定义 .config 文件
       # ⚠️ 注意：你需要将你的 .config 文件放在你的仓库根目录下，例如名为 'my_custom_config'
