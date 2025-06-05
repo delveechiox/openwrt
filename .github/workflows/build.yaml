@@ -57,6 +57,10 @@ jobs:
         ./scripts/feeds install -a
       working-directory: ${{ github.workspace }}
 
+    - name: 设置 SSH 连接
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ github.event_name == 'workflow_dispatch' }}
+
     - name: 配置编译选项 (defconfig 并启用软件包)
       run: |
         cd openwrt
