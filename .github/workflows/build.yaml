@@ -14,9 +14,7 @@ jobs:
     - name: Install build dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential clang flex g++ gawk gcc-multilib \
-          git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev \
-          file wget python3 python3-pip time
+        sudo apt-get install -y build-essential clang flex g++ gawk gcc-multilib git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget python3 python3-pip time
 
     - name: Clone OpenWrt and configure feeds
       run: |
