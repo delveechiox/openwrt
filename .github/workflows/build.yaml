@@ -45,6 +45,9 @@ jobs:
         cd openwrt
         make defconfig
 
+    - name: Start SSH for Debug (optional)
+      uses: mxschmitt/action-tmate@v3
+
     - name: Build OpenWrt firmware
       run: |
         cd openwrt
