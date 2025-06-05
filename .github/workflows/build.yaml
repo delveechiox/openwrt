@@ -62,12 +62,25 @@ jobs:
     - name: 启动 SSH 调试会话
       if: ${{ github.event_name == 'workflow_dispatch' }} # 仅在手动触发时启用
       run: |
-        sudo apt update && sudo apt install -y tmate # 确保安装 tmate
-        echo "Tmate SSH 会话正在启动..."
+        echo "--> 正在更新 apt 缓存并安装 tmate..."
+        sudo apt update
+        sudo apt install -y tmate
+        echo "--> 检查 tmate 安装状态..."
+        which tmate || { echo "错误：tmate 未找到！请检查安装日志。"; exit 1; }
+        tmate --version || { echo "错误：tmate 版本信息无法获取！"; exit 1; }
+        echo "--> tmate 已安装并可执行。"
+
+        echo "--> 正在启动 Tmate SSH 会话..."
         tmate -S /tmp/tmate.sock new-session -d # 在后台启动一个新的 tmate 会话
-        echo "连接信息："
-        tmate -S /tmp/tmate.sock display -p '#{ssh_connection}' # 打印 SSH 连接字符串
-        echo "作业将暂停 60 分钟以便您连接。请在连接后手动执行 make menuconfig。"
+        
+        # 稍等片刻，确保 tmate 会话启动并生成连接字符串
+        sleep 5 
+        
+        echo "--> 连接信息 (请复制此行并在本地终端使用):"
+        tmate -S /tmp/tmate.sock display -p '#{ssh_connection}'
+        echo "SSH 连接已启动。请在接下来的 60 分钟内连接并调试。"
+        echo "如果您已完成调试，可以直接关闭您的 SSH 终端，或者等待此步骤超时。"
+        echo "连接后，您可以导航到 '~/openwrt' 目录并运行 'make menuconfig'。"
         sleep 3600 # 暂停工作流 60 分钟 (3600 秒)，以便进行调试。你可以根据需要调整此时间。
       working-directory: ${{ github.workspace }} # 确保在正确的工作目录执行
 
