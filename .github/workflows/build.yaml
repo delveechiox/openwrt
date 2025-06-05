@@ -58,12 +58,7 @@ jobs:
         ./scripts/feeds install -a
       working-directory: ${{ github.workspace }}
 
-    - name: 安装 Tmate
-      run: |
-        sudo apt install -y tmate # 显式安装 tmate
-        which tmate # 验证 tmate 是否在 PATH 中
-      # 这个步骤应该在 tmate Action 之前执行，确保 tmate 可用
-
+    # 移除了显式安装 tmate 的步骤，完全依赖 mxschmitt/action-tmate 来处理其自身的依赖
     - name: 设置 SSH 连接 (用于调试)
       uses: mxschmitt/action-tmate@v3 # 使用 tmate Action 建立 SSH 连接
       if: ${{ github.event_name == 'workflow_dispatch' }} # 仅在手动触发时启用，避免每次提交都开启
