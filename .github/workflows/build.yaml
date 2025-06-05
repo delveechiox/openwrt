@@ -52,6 +52,59 @@ jobs:
 
       working-directory: ${{ github.workspace }}
 
+    - name: 设置 OpenWrt 默认 IP 地址
+      run: |
+        # 创建用于存放自定义文件的目录结构
+        mkdir -p files/etc/config
+        
+        # 写入自定义的 network 配置文件
+        # 这将覆盖或创建固件中的 /etc/config/network 文件
+        cat << EOF > files/etc/config/network
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
+
+config globals 'globals'
+	option ula_prefix 'fdca:a084:2294::/48'
+
+config device
+	option name 'br-lan'
+	option type 'bridge'
+	list ports 'eth0' # 假设 eth0 是 LAN 口，请根据您的实际硬件调整
+	option ipv6 '0' # 如果不需要 IPv6 可以禁用
+
+config interface 'lan'
+	option device 'br-lan'
+	option proto 'static'
+	option ipaddr '192.168.5.5' # 设置 LAN IP 地址为 192.168.5.5
+	option netmask '255.255.255.0'
+	option gateway '192.168.5.1' # 可以根据需要修改网关
+	list dns '192.168.5.1' # 可以根据需要修改 DNS
+	list dns '8.8.8.8' # Google DNS 作为备用
+	option delegate '0' # 如果不希望 LAN 接口代理 IPv6 地址，可以禁用
+	
+config interface 'wan'
+	option device 'eth1' # 假设 eth1 是 WAN 口，请根据您的实际硬件调整
+	option proto 'dhcp' # WAN 口通常使用 DHCP
+	option peerdns '0' # 不从 ISP 获取 DNS
+	list dns '8.8.8.8' # 手动设置 WAN DNS
+	list dns '1.1.1.1' # Cloudflare DNS 作为备用
+	option delegate '0' # 如果不希望 WAN 接口代理 IPv6 地址，可以禁用
+
+config interface 'wan6'
+	option device 'wan'
+	option proto 'dhcpv6'
+	option reqaddress 'try'
+	option reqprefix 'auto'
+	option peerdns '0' # 不从 ISP 获取 DNS
+	list dns '2001:4860:4860::8888' # IPv6 Google DNS
+	list dns '2001:4860:4860::8844' # IPv6 Google DNS
+
+EOF
+      working-directory: ${{ github.workspace }}/openwrt # 在 OpenWrt 源代码根目录执行
+      
     - name: 更新并安装 Feeds
       run: |
         cd openwrt
@@ -65,6 +118,21 @@ jobs:
         # 首先，使用默认配置
         make defconfig
         
+        # >>>>>>> 配置 Intel i5 1135G7 相关的 x86_64 架构
+        sed -i 's/# CONFIG_TARGET_x86 is not set/CONFIG_TARGET_x86=y/' .config
+        sed -i 's/# CONFIG_TARGET_x86_64 is not set/CONFIG_TARGET_x86_64=y/' .config
+        sed -i 's/# CONFIG_TARGET_x86_generic is not set/CONFIG_TARGET_x86_generic=y/' .config
+        # 确保其他 x86 子目标被禁用，以避免冲突（如果 defconfig 默认启用了）
+        sed -i 's/CONFIG_TARGET_x86_KVM_and_VMware_based_virtual_machines=y/# CONFIG_TARGET_x86_KVM_and_VMware_based_virtual_machines is not set/' .config
+        sed -i 's/CONFIG_TARGET_x86_Legacy=y/# CONFIG_TARGET_x86_Legacy is not set/' .config
+
+        # >>>>>>> 配置固件大小为 4GB (4096MB)
+        # 注意：这个选项通常在 x86 目标下才有效，并且会设置根文件系统的大小
+        sed -i 's/CONFIG_TARGET_IMAGES_ROOTFS_SIZE=[0-9]*/CONFIG_TARGET_IMAGES_ROOTFS_SIZE=4096/' .config
+        # 如果该行不存在，则添加它（但通常 defconfig 会有默认值）
+        grep -q "CONFIG_TARGET_IMAGES_ROOTFS_SIZE" .config || echo "CONFIG_TARGET_IMAGES_ROOTFS_SIZE=4096" >> .config
+        
+        # >>>>>>> 启用所需软件包
         # 启用 passwall 相关的软件包
         # 以下是常见的 passwall 及其依赖包的选项。
         # 具体名称可能因 feed 源和版本而异，如果编译失败，请检查 .config 文件中真实的包名。
@@ -82,12 +150,19 @@ jobs:
         # 启用 vlmcsd 软件包
         sed -i 's/# CONFIG_PACKAGE_vlmcsd is not set/CONFIG_PACKAGE_vlmcsd=y/' .config
         sed -i 's/# CONFIG_PACKAGE_vlmcsd-server is not set/CONFIG_PACKAGE_vlmcsd-server=y/' .config
+
+        # 启用 cfdisk
+        sed -i 's/# CONFIG_PACKAGE_cfdisk is not set/CONFIG_PACKAGE_cfdisk=y/' .config
+        # 启用 fdisk
+        sed -i 's/# CONFIG_PACKAGE_fdisk is not set/CONFIG_PACKAGE_fdisk=y/' .config
+        # 启用 e2fsprogs (会包含核心工具，如 mkfs.ext4, fsck.ext4 等)
+        sed -i 's/# CONFIG_PACKAGE_e2fsprogs is not set/CONFIG_PACKAGE_e2fsprogs=y/' .config
         
         # 如果需要，也可以启用其他常用软件包或定制选项
         # sed -i 's/# CONFIG_PACKAGE_luci-app-samba4 is not set/CONFIG_PACKAGE_luci-app-samba4=y/' .config
-        # sed -i 's/# CONFIG_TARGET_ramips_mt7621 is not set/CONFIG_TARGET_ramips_mt7621=y/' .config # 示例：选择特定目标平台
         
         # 再次执行 make defconfig 来确保修改被正确应用并生成完整的 .config 文件
+        # 这很重要，因为它会根据新的配置解决依赖关系并填充缺失的选项。
         make defconfig
       working-directory: ${{ github.workspace }}
 
@@ -108,4 +183,5 @@ jobs:
       with:
         name: OpenWrt_Firmware
         path: openwrt/bin/targets/ # 固件通常在这里，请根据你的目标平台调整路径
-        # 你可能需要更精确的路径，例如：openwrt/bin/targets/ramips/mt7621/openwrt-ramips-mt7621-*.bin
+        # 对于 x86_64 目标，路径通常是 openwrt/bin/targets/x86/64/
+        # 你可能需要更精确的路径，例如：openwrt/bin/targets/x86/64/openwrt-x86-64-generic-squashfs-combined-efi.img.gz
