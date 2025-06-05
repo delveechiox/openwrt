@@ -60,9 +60,7 @@ jobs:
 
     - name: 设置 SSH 连接 (用于调试)
       uses: mxschmitt/action-tmate@v3 # 使用 tmate Action 建立 SSH 连接
-      if: ${{ github.event_name == 'workflow_dispatch' }} # 仅在手动触发时启用，避免每次提交都开启
-      timeout-minutes: 60 # 设置 SSH 会话的超时时间，例如 60 分钟。超过此时间，工作流将继续或失败。
- 
+       
     - name: 配置编译选项 (defconfig 并启用软件包)
       run: |
         cd openwrt
