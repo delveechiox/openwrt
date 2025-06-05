@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest # 在最新的 Ubuntu 运行器上执行
-    timeout-minutes: 360 # 设置整个工作流的超时时间，例如 6 小时，以便有足够时间调试
+    timeout-minutes: 360 # 设置整个工作流的超时时间，例如 6 小时
 
     steps:
     - name: 检查可用磁盘空间
@@ -58,31 +58,6 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
       working-directory: ${{ github.workspace }}
-
-    - name: 启动 SSH 调试会话
-      if: ${{ github.event_name == 'workflow_dispatch' }} # 仅在手动触发时启用
-      run: |
-        echo "--> 正在更新 apt 缓存并安装 tmate..."
-        sudo apt update
-        sudo apt install -y tmate
-        echo "--> 检查 tmate 安装状态..."
-        which tmate || { echo "错误：tmate 未找到！请检查安装日志。"; exit 1; }
-        tmate --version || { echo "错误：tmate 版本信息无法获取！"; exit 1; }
-        echo "--> tmate 已安装并可执行。"
-
-        echo "--> 正在启动 Tmate SSH 会话..."
-        tmate -S /tmp/tmate.sock new-session -d # 在后台启动一个新的 tmate 会话
-        
-        # 稍等片刻，确保 tmate 会话启动并生成连接字符串
-        sleep 5 
-        
-        echo "--> 连接信息 (请复制此行并在本地终端使用):"
-        tmate -S /tmp/tmate.sock display -p '#{ssh_connection}'
-        echo "SSH 连接已启动。请在接下来的 60 分钟内连接并调试。"
-        echo "如果您已完成调试，可以直接关闭您的 SSH 终端，或者等待此步骤超时。"
-        echo "连接后，您可以导航到 '~/openwrt' 目录并运行 'make menuconfig'。"
-        sleep 3600 # 暂停工作流 60 分钟 (3600 秒)，以便进行调试。你可以根据需要调整此时间。
-      working-directory: ${{ github.workspace }} # 确保在正确的工作目录执行
 
     - name: 配置编译选项 (defconfig 并启用软件包)
       run: |
