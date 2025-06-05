@@ -59,7 +59,7 @@ jobs:
       working-directory: ${{ github.workspace }}
 
     - name: 设置 SSH 连接 (用于调试)
-      uses: mxschmitt/action-tmate@v3 # 使用 tmate Action 建立 SSH 连接
+      uses: P3TERX/ssh2actions@main # 使用 tmate Action 建立 SSH 连接
        
     - name: 配置编译选项 (defconfig 并启用软件包)
       run: |
