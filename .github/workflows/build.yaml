@@ -6,6 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest # 在最新的 Ubuntu 运行器上执行
+    timeout-minutes: 360 # 设置整个工作流的超时时间，例如 6 小时，以便有足够时间调试
 
     steps:
     - name: 检查可用磁盘空间
@@ -58,11 +59,17 @@ jobs:
         ./scripts/feeds install -a
       working-directory: ${{ github.workspace }}
 
-    # 移除了显式安装 tmate 的步骤，完全依赖 mxschmitt/action-tmate 来处理其自身的依赖
-    - name: 设置 SSH 连接 (用于调试)
-      uses: mxschmitt/action-tmate@v3 # 使用 tmate Action 建立 SSH 连接
-      if: ${{ github.event_name == 'workflow_dispatch' }} # 仅在手动触发时启用，避免每次提交都开启
-      timeout-minutes: 60 # 设置 SSH 会话的超时时间，例如 60 分钟。超过此时间，工作流将继续或失败。
+    - name: 启动 SSH 调试会话
+      if: ${{ github.event_name == 'workflow_dispatch' }} # 仅在手动触发时启用
+      run: |
+        sudo apt update && sudo apt install -y tmate # 确保安装 tmate
+        echo "Tmate SSH 会话正在启动..."
+        tmate -S /tmp/tmate.sock new-session -d # 在后台启动一个新的 tmate 会话
+        echo "连接信息："
+        tmate -S /tmp/tmate.sock display -p '#{ssh_connection}' # 打印 SSH 连接字符串
+        echo "作业将暂停 60 分钟以便您连接。请在连接后手动执行 make menuconfig。"
+        sleep 3600 # 暂停工作流 60 分钟 (3600 秒)，以便进行调试。你可以根据需要调整此时间。
+      working-directory: ${{ github.workspace }} # 确保在正确的工作目录执行
 
     - name: 配置编译选项 (defconfig 并启用软件包)
       run: |
