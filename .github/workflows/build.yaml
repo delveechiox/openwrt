@@ -14,14 +14,13 @@ jobs:
     - name: 检出仓库
       uses: actions/checkout@v4 # 检出你的 GitHub 仓库代码
 
-    - name: 安装 OpenWrt 编译依赖及 tmate
+    - name: 安装 OpenWrt 编译依赖
       run: |
         sudo apt update
         # 移除了 'python3-distutils'，因为它可能不再作为独立的 apt 包提供
         sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 # 基本编译依赖
         sudo apt install -y file patch diffutils libtool libelf-dev clang flex subversion # 更多常用依赖
         sudo apt install -y python3-pip # 用于安装某些工具可能需要的pip
-        sudo apt install -y tmate # 显式安装 tmate，以防 mxschmitt/action-tmate 内部安装失败
 
     - name: 克隆 OpenWrt 官方源代码
       run: |
@@ -58,6 +57,12 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
       working-directory: ${{ github.workspace }}
+
+    - name: 安装 Tmate
+      run: |
+        sudo apt install -y tmate # 显式安装 tmate
+        which tmate # 验证 tmate 是否在 PATH 中
+      # 这个步骤应该在 tmate Action 之前执行，确保 tmate 可用
 
     - name: 设置 SSH 连接 (用于调试)
       uses: mxschmitt/action-tmate@v3 # 使用 tmate Action 建立 SSH 连接
