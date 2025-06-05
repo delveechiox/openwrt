@@ -31,6 +31,8 @@ jobs:
     - name: Update and install feeds
       run: |
         cd openwrt
+        rm -rf feeds
+        cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
