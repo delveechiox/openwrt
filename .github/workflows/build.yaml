@@ -1,123 +1,61 @@
-name: OpenWrt 编译工作流
+name: Build OpenWrt x86_64
 
 on:
-  workflow_dispatch: # 允许手动触发工作流
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 在最新的 Ubuntu 运行器上执行
-    timeout-minutes: 360 # 设置整个工作流的超时时间，例如 6 小时
+    runs-on: ubuntu-22.04
 
     steps:
-    - name: 检查可用磁盘空间
-      run: df -h # 显示磁盘使用情况，以确认空间足够。GitHub Actions 运行器每次都是新的，所以通常不需要手动清理历史数据。
+    - name: Checkout source code
+      uses: actions/checkout@v4
 
-    - name: 检出仓库
-      uses: actions/checkout@v4 # 检出你的 GitHub 仓库代码
-
-    - name: 释放磁盘空间
-      uses: jlumbroso/free-disk-space@main
-      with:
-            # this might remove tools that are actually needed,
-            # if set to "true" but frees about 6 GB
-            tool-cache: true
-            # all of these default to true, but feel free to set to
-            # "false" if necessary for your workflow
-            android: true
-            dotnet: true
-            haskell: true
-            large-packages: true
-            swap-storage: true
-
-    - name: 安装 OpenWrt 编译依赖
+    - name: Install build dependencies
       run: |
-        sudo apt update
-        # 移除了 'python3-distutils'，因为它可能不再作为独立的 apt 包提供
-        sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc rsync wget unzip python3 # 基本编译依赖
-        sudo apt install -y file patch diffutils libtool libelf-dev clang flex subversion # 更多常用依赖
-        sudo apt install -y python3-pip # 用于安装某些工具可能需要的pip
+        sudo apt-get update
+        sudo apt-get install -y build-essential clang flex g++ gawk gcc-multilib \
+          git libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev \
+          file wget python3 python3-pip time
 
-    - name: 克隆 OpenWrt 官方源代码
+    - name: Clone OpenWrt and configure feeds
       run: |
-        git clone https://github.com/openwrt/openwrt.git openwrt
+        git clone https://github.com/openwrt/openwrt.git
         cd openwrt
-        # 切换到你需要的 OpenWrt 版本分支，例如：
-        # git checkout openwrt-23.05 # 示例：切换到 23.05 分支
-        git branch -a # 列出所有分支，方便选择
-      working-directory: ${{ github.workspace }}
 
-    - name: 添加自定义 Feeds 和 vlmcsd 源码
-      run: |
-        cd openwrt
-        # 添加 passwall 的 Feed 源
-        # 注意：这里使用的是 kenzo 的源，它是常用的第三方源。
-        # 你可能需要根据实际情况调整此源或添加其他源。
-        echo 'src-git passwall_packages https://github.com/kenzok8/openwrt-packages.git' >> feeds.conf.default
-        echo 'src-git passwall_luci https://github.com/kenzok8/small-package.git;main' >> feeds.conf.default
-        
-        # 克隆 vlmcsd 到 packages 目录
-        # OpenWrt 编译系统会自动识别 packages 目录下的软件源
-        mkdir -p package/vlmcsd
-        git clone https://github.com/Wind4/vlmcsd.git package/vlmcsd
-        
-        # 确保 vlmcsd 仓库的 .git 目录存在，如果不需要历史记录可以只保留源码
-        # 或者直接cp过去
-        # rm -rf package/vlmcsd/.git # 如果你不想保留vlmcsd的git历史，可以取消注释这行
+        # 使用 HTTPS 添加 feeds，防止 SSH 公钥报错
+        cat <<EOF > feeds.conf.default
+src-git packages https://github.com/openwrt/packages.git
+src-git luci https://github.com/openwrt/luci.git
+src-git routing https://github.com/openwrt-routing/packages.git
+src-git telephony https://github.com/openwrt/telephony.git
+src-git passwall https://github.com/xiaorouji/openwrt-passwall.git
+src-git vlmcsd https://github.com/Wind4/vlmcsd.git
+EOF
 
-      working-directory: ${{ github.workspace }}
-
-    - name: 更新并安装 Feeds
+    - name: Update and install feeds
       run: |
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-      working-directory: ${{ github.workspace }}
 
-    - name: 配置编译选项 (defconfig 并启用软件包)
+    - name: Copy custom .config
+      run: |
+        cp .config openwrt/.config
+
+    - name: Prepare build environment
       run: |
         cd openwrt
-        # 首先，使用默认配置。这将根据OpenWrt源码的默认设置选择目标平台。
         make defconfig
-        
-        # >>>>>>> 启用所需软件包
-        # 启用 passwall 相关的软件包
-        # 以下是常见的 passwall 及其依赖包的选项。
-        # 具体名称可能因 feed 源和版本而异，如果编译失败，请检查 .config 文件中真实的包名。
-        sed -i 's/# CONFIG_PACKAGE_passwall is not set/CONFIG_PACKAGE_passwall=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_passwall_luci is not set/CONFIG_PACKAGE_passwall_luci=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_v2ray-core is not set/CONFIG_PACKAGE_v2ray-core=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_v2ray-plugin is not set/CONFIG_PACKAGE_v2ray-plugin=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_xray-core is not set/CONFIG_PACKAGE_xray-core=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_xray-plugin is not set/CONFIG_PACKAGE_xray-plugin=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_shadowsocks-libev-ss-redir is not set/CONFIG_PACKAGE_shadowsocks-libev-ss-redir=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_shadowsocks-libev-ss-tunnel is not set/CONFIG_PACKAGE_shadowsocks-libev-ss-tunnel=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_shadowsocksr-libev-redir is not set/CONFIG_PACKAGE_shadowsocksr-libev-redir=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_shadowsocksr-libev-tunnel is not set/CONFIG_PACKAGE_shadowsocksr-libev-tunnel=y/' .config
-        
-        # 启用 vlmcsd 软件包
-        sed -i 's/# CONFIG_PACKAGE_vlmcsd is not set/CONFIG_PACKAGE_vlmcsd=y/' .config
-        sed -i 's/# CONFIG_PACKAGE_vlmcsd-server is not set/CONFIG_PACKAGE_vlmcsd-server=y/' .config
-        
-        # 再次执行 make defconfig 来确保修改被正确应用并生成完整的 .config 文件
-        # 这很重要，因为它会根据新的配置解决依赖关系并填充缺失的选项。
-        make defconfig
-      working-directory: ${{ github.workspace }}
 
-    - name: 下载所有源代码
+    - name: Build OpenWrt firmware
       run: |
         cd openwrt
-        make download -j$(nproc) # 使用所有可用的 CPU 核心下载
-      working-directory: ${{ github.workspace }}
+        make -j$(nproc) download
+        make -j$(nproc) V=s
 
-    - name: 编译 OpenWrt
-      run: |
-        cd openwrt
-        make -j$(nproc) V=s # 使用所有可用的 CPU 核心进行编译，V=s 显示详细输出
-      working-directory: ${{ github.workspace }}
-
-    - name: 上传固件 Artifacts
-      uses: actions/upload-artifact@v4 # 将编译好的固件作为工作流的输出
+    - name: Upload firmware artifacts
+      uses: actions/upload-artifact@v4
       with:
-        name: OpenWrt_Firmware
-        path: openwrt/bin/targets/ # 固件通常在这里，请根据你的目标平台调整路径
-        # 固件路径将取决于默认的目标平台，例如：openwrt/bin/targets/generic/<subtarget>/
+        name: OpenWrt-x86_64
+        path: openwrt/bin/targets/x86/64/
