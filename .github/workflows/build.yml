@@ -31,6 +31,7 @@ jobs:
         cd openwrt
         echo "src-git passwall https://github.com/xiaorouji/openwrt-passwall" >> feeds.conf.default
         echo "src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages" >> feeds.conf.default
+        echo "CONFIG_PACKAGE_luci=y" >> .config
         ./scripts/feeds update passwall passwall_packages
         ./scripts/feeds install -a -p passwall
         ./scripts/feeds install -a -p passwall_packages
