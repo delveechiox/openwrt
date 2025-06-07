@@ -26,6 +26,15 @@ jobs:
         cd openwrt
         sed -i 's/192.168.1.1/192.168.5.5/g' package/base-files/files/bin/config_generate
 
+    - name: Add Passwall feed
+      run: |
+        cd openwrt
+        echo "src-git passwall https://github.com/xiaorouji/openwrt-passwall" >> feeds.conf.default
+        echo "src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages" >> feeds.conf.default
+        ./scripts/feeds update passwall passwall_packages
+        ./scripts/feeds install -a -p passwall
+        ./scripts/feeds install -a -p passwall_packages
+
     - name: Update & Install feeds
       run: |
         cd openwrt
