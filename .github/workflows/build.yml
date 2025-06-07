@@ -19,8 +19,7 @@ jobs:
       run: |
         git clone https://github.com/openwrt/openwrt -b master openwrt
         cp feeds.conf.default openwrt/
-        cp diy-part.sh openwrt/
-         
+                 
     - name: Modify LAN IP
       run: |
         cd openwrt
