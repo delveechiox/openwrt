@@ -42,6 +42,7 @@ jobs:
     - name: vlmcsd to packages
         mkdir -p package/vlmcsd
         git clone https://github.com/Wind4/vlmcsd.git package/vlmcsd
+        cd openwrt && ./scripts/feeds update -a && ./scripts/feeds install -a
 
     - name: Start SSH with tmate
       uses: mxschmitt/action-tmate@v3
