@@ -26,6 +26,10 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
+    - name: Modify default LAN IP
+      run: |
+        sed -i 's/192.168.1.1/192.168.5.5/g' openwrt/package/base-files/files/bin/config_generate
+
     - name: Add Passwall and vlmcsd feeds
       run: |
         cd openwrt
