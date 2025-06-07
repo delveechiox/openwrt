@@ -28,7 +28,8 @@ jobs:
     - name: Add Passwall and vlmcsd feeds
       run: |
         cd openwrt
-        echo "src-git kenzo https://github.com/fw876/helloworld" >> feeds.conf.default
+        echo 'src-git passwall https://github.com/xiaorouji/openwrt-passwall' >>feeds.conf.default
+        #echo "src-git kenzo https://github.com/fw876/helloworld" >> feeds.conf.default
         echo "src-git vlmcsd https://github.com/Wind4/vlmcsd" >> feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a
