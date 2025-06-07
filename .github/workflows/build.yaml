@@ -39,6 +39,10 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
+    - name: 克隆 vlmcsd 到 packages 目录
+        mkdir -p package/vlmcsd
+        git clone https://github.com/Wind4/vlmcsd.git package/vlmcsd
+
     - name: Start SSH with tmate
       uses: mxschmitt/action-tmate@v3
       with:
