@@ -1,0 +1,5 @@
+src-git packages https://github.com/openwrt/packages
+src-git luci https://github.com/openwrt/luci
+src-git routing https://github.com/openwrt/routing
+src-git telephony https://github.com/openwrt/telephony
+src-git helloworld https://github.com/fw876/helloworld
