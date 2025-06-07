@@ -21,6 +21,7 @@ jobs:
     - name: Clone OpenWrt official repo
       run: |
         git clone https://github.com/openwrt/openwrt.git
+        git clone https://github.com/siropboy/luci-app-vlmcsd package/luci-app-vlmcsd
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
