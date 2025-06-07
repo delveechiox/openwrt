@@ -20,9 +20,11 @@ jobs:
         git clone https://github.com/openwrt/openwrt -b master openwrt
         cp feeds.conf.default openwrt/
         cp diy-part.sh openwrt/
+         
+    - name: Modify LAN IP
+      run: |
         cd openwrt
-        chmod +x diy-part.sh
-        ./diy-part.sh
+        sed -i 's/192.168.1.1/192.168.5.5/g' package/base-files/files/bin/config_generate
 
     - name: Update & Install feeds
       run: |
