@@ -21,12 +21,14 @@ jobs:
       run: |
         git clone https://github.com/openwrt/openwrt.git
         cd openwrt
+        git clone https://github.com/Wind4/vlmcsd.git package/vlmcsd
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
     - name: Modify default LAN IP
       run: |
         sed -i 's/192.168.1.1/192.168.5.5/g' openwrt/package/base-files/files/bin/config_generate
+        sudo mkdir -p package/vlmcsd
 
     - name: Add Passwall and vlmcsd feeds
       run: |
@@ -37,12 +39,6 @@ jobs:
         echo "src-git vlmcsd https://github.com/Wind4/vlmcsd" >> feeds.conf.default
         ./scripts/feeds update -a
         ./scripts/feeds install -a
-
-    - name: vlmcsd to packages
-        cd openwrt
-        sudo mkdir -p package/vlmcsd
-        git clone https://github.com/Wind4/vlmcsd.git package/vlmcsd
-        ./scripts/feeds update -a && ./scripts/feeds install -a
 
     - name: Start SSH with tmate
       uses: mxschmitt/action-tmate@v3
